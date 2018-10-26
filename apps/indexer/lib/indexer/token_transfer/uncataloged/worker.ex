@@ -85,6 +85,6 @@ defmodule Indexer.TokenTransfer.Uncataloged.Worker do
   end
 
   defp async_enqueue(block_numbers) do
-    Task.Supervisor.async_nolink(Uncataloged.TaskSupervisor, Fetcher, :enqueue, [block_numbers])
+    Task.Supervisor.async_nolink(Uncataloged.TaskSupervisor, Fetcher, :push_front, [block_numbers])
   end
 end
