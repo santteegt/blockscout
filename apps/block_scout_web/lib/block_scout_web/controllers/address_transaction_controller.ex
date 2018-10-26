@@ -19,8 +19,7 @@ defmodule BlockScoutWeb.AddressTransactionController do
           necessity_by_association: %{
             [created_contract_address: :names] => :optional,
             [from_address: :names] => :optional,
-            [to_address: :names] => :optional,
-            :token_transfers => :optional
+            [to_address: :names] => :optional
           }
         ]
         |> Keyword.merge(paging_options(params))
