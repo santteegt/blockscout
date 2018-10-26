@@ -6,6 +6,7 @@ defmodule Explorer.Chain.ImportTest do
   alias Explorer.Chain.{
     Address,
     Address.TokenBalance,
+    Address.CurrentTokenBalance,
     Block,
     Data,
     Log,
@@ -393,6 +394,89 @@ defmodule Explorer.Chain.ImportTest do
       count = Explorer.Repo.one(Ecto.Query.from(t in TokenBalance, select: count(t.id)))
 
       assert 3 == count
+    end
+
+    test "inserts a current_token_balance" do
+      params = %{
+        addresses: %{
+          params: [
+            %{hash: "0xe8ddc5c7a2d2f0d7a9798459c0104fdf5e987aca"},
+            %{hash: "0x515c09c5bba1ed566b02a5b0599ec5d5d0aee73d"},
+            %{hash: "0x8bf38d4764929064f2d4d3a56520a76ab3df415b"}
+          ],
+          timeout: 5
+        },
+        tokens: %{
+          on_conflict: :nothing,
+          params: [
+            %{
+              contract_address_hash: "0x8bf38d4764929064f2d4d3a56520a76ab3df415b",
+              type: "ERC-20"
+            }
+          ],
+          timeout: 5
+        },
+        address_current_token_balances: %{
+          params: [
+            %{
+              address_hash: "0xe8ddc5c7a2d2f0d7a9798459c0104fdf5e987aca",
+              token_contract_address_hash: "0x8bf38d4764929064f2d4d3a56520a76ab3df415b",
+              block_number: "37",
+              value: 200
+            },
+            %{
+              address_hash: "0x515c09c5bba1ed566b02a5b0599ec5d5d0aee73d",
+              token_contract_address_hash: "0x8bf38d4764929064f2d4d3a56520a76ab3df415b",
+              block_number: "37",
+              value: 100
+            }
+          ],
+          timeout: 5
+        }
+      }
+
+      Import.all(params)
+
+      count =
+        CurrentTokenBalance
+        |> Explorer.Repo.all()
+        |> Enum.count
+
+      assert count == 2
+    end
+
+    test "considers the last block upserting current_token_balance" do
+      address = insert(:address, hash: "0xe8ddc5c7a2d2f0d7a9798459c0104fdf5e987aca")
+      %Token{contract_address_hash: contract_address_hash} = insert(:token)
+
+      insert(
+        :address_current_token_balance,
+        address: address,
+        block_number: 1,
+        token_contract_address_hash: contract_address_hash,
+        value: 100
+      )
+
+      params = %{
+        address_current_token_balances: %{
+          params: [
+            %{
+              address_hash: "0xe8ddc5c7a2d2f0d7a9798459c0104fdf5e987aca",
+              token_contract_address_hash: to_string(contract_address_hash),
+              block_number: "2",
+              value: 200
+            }
+          ],
+          timeout: 5
+        }
+      }
+
+      Import.all(params)
+
+      current_token_balance = Explorer.Repo.get_by(CurrentTokenBalance, address_hash: address.hash)
+
+      assert current_token_balance.block_number == 2
+      assert current_token_balance.value == Decimal.new(200)
     end
 
     test "with empty map" do
